@@ -217,10 +217,11 @@ class _MyHomePageState extends State<MyHomePage> {
                     color: Colors.deepPurpleAccent,
                   ),
                   onChanged: (String newValue) {
-                    setState(() {
-                      dropdownValue = newValue;
-                      print("the new value is $dropdownValue");
-                    });
+                    _showDialogMode(false, ModeOfOperation.one, newValue);
+                    //   setState(() {
+                    //     dropdownValue = newValue;
+                    //     print("the new value is $dropdownValue");
+                    //    });
                   },
                   items: <String>[
                     "Option 1",
@@ -238,32 +239,40 @@ class _MyHomePageState extends State<MyHomePage> {
               ],
             ),
             Column(
-               crossAxisAlignment: CrossAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: <Widget>[
                 ListTile(
-                  title:  Text('Full Area', textAlign: TextAlign.right,),
-                  trailing: Radio(
-                  value: ModeOfOperation.one,
-                  groupValue: currentMode,
-                  onChanged: (ModeOfOperation value) {
-                    setState(() {
-                      currentMode = value;
-                      print("the new value is $currentMode");
-                    });
-                  },)
-                ),
+                    title: Text(
+                      'Full Area',
+                      textAlign: TextAlign.right,
+                    ),
+                    trailing: Radio(
+                      value: ModeOfOperation.one,
+                      groupValue: currentMode,
+                      onChanged: (ModeOfOperation value) {
+                        _showDialogMode(true, value, "");
+                        //   setState(() {
+                        //     currentMode = value;
+                        //     print("the new value is $currentMode");
+                        //   });
+                      },
+                    )),
                 ListTile(
-                  title: Text('Limited Area', textAlign: TextAlign.right,),
-                  trailing: Radio(
-                  value: ModeOfOperation.two,
-                  groupValue: currentMode,
-                  onChanged: (ModeOfOperation value) {
-                    setState(() {
-                      currentMode = value;
-                      print("the new value is $currentMode");
-                    });
-                  },)
-                ),
+                    title: Text(
+                      'Limited Area',
+                      textAlign: TextAlign.right,
+                    ),
+                    trailing: Radio(
+                      value: ModeOfOperation.two,
+                      groupValue: currentMode,
+                      onChanged: (ModeOfOperation value) {
+                        _showDialogMode(true, value, "");
+                        //     setState(() {
+                        //       currentMode = value;
+                        //      print("the new value is $currentMode");
+                        //      });
+                      },
+                    )),
 
                 // RaisedButton(
                 //   child: Text('Stop'),
@@ -543,5 +552,46 @@ class _MyHomePageState extends State<MyHomePage> {
       _imageWhite = ai;
       //  _imageWhite = _imageWhiteAlarm;
     });
+  }
+
+  void _showDialogMode(bool type, ModeOfOperation mode, String dropDown) {
+    // flutter defined function
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        // return object of type Dialog
+        return AlertDialog(
+          title: new Text(type ? 'Change Mode' : 'Change Program'),
+          content: new Text("Are you sure you want to change this setting?"),
+          actions: <Widget>[
+            // usually buttons at the bottom of the dialog
+            new FlatButton(
+              child: new Text("Yes"),
+              onPressed: () {
+                Navigator.of(context).pop();
+                if (type) {
+                  setState(() {
+                    currentMode = mode;
+                    print("the new mode is $currentMode");
+                  });
+                } else {
+                  setState(() {
+                    dropdownValue = dropDown;
+                    print("the new Drop Down value is $dropdownValue");
+                  });
+                }
+              },
+            ),
+
+            new FlatButton(
+              child: new Text("No"),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 }
