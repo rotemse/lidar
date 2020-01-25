@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audio_cache.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -68,12 +69,21 @@ class _MyHomePageState extends State<MyHomePage> {
   String dropdownValue = 'Option 1';
   List<int> whiteOutputState = new List(10);
   List<int> blackOutputState = new List(10);
+  List<String> progNames = [
+    "Option 1",
+    "Option 2",
+    "Option 3",
+    "Option 4",
+    "Option 5"
+  ];
+  List<TextEditingController> progControllers = new List(5);
   static Socket socket1;
   static Socket socket2;
   static num watchdog1 = 0;
   static num watchdog2 = 0;
   String data1 = " ";
   String data2 = " ";
+  String ddValue = "Option 1";
   static bool connected1 = false;
   static bool connected2 = false;
   Color conColor = Colors.white;
@@ -96,6 +106,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomPadding: false,
       appBar: AppBar(
         title: //Text(data1 == null ? 'NO CONNECTED1' : 'CONNECTED1'),
             const Text("Sick App"),
@@ -121,32 +132,6 @@ class _MyHomePageState extends State<MyHomePage> {
       body: Container(
         child: Column(
           children: <Widget>[
-            Row(
-              children: <Widget>[
-                // RaisedButton(
-                //   color: conColor,
-                //   child: Text('Connect'),
-                //   onPressed: () {
-                //     connect();
-                //   },
-                // ),
-                // RaisedButton(
-                //   color: disColor,
-                //   child: Text('Disconnect'),
-                //   onPressed: () {
-                //     disconnect();
-                //   },
-                // ),
-                // RaisedButton(
-                //   child: Text('cancel'),
-                //   onPressed: () {},
-                // ),
-                // RaisedButton(
-                //   child: Text('start'),
-                //   onPressed: () {},
-                // ),
-              ],
-            ),
             Row(
               children: <Widget>[
                 Column(
@@ -207,7 +192,7 @@ class _MyHomePageState extends State<MyHomePage> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: <Widget>[
                 DropdownButton<String>(
-                  value: dropdownValue,
+                  value: ddValue,
                   icon: Icon(Icons.arrow_drop_down),
                   iconSize: 24,
                   elevation: 16,
@@ -217,22 +202,18 @@ class _MyHomePageState extends State<MyHomePage> {
                     color: Colors.deepPurpleAccent,
                   ),
                   onChanged: (String newValue) {
+                    ddValue = newValue;
                     _showDialogMode(false, ModeOfOperation.one, newValue);
                     //   setState(() {
                     //     dropdownValue = newValue;
                     //     print("the new value is $dropdownValue");
                     //    });
                   },
-                  items: <String>[
-                    "Option 1",
-                    'Option 2',
-                    'Option 3',
-                    'Option 4',
-                    'Option 5'
-                  ].map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
+                  items:
+                      progNames.map<DropdownMenuItem<String>>((String value) {
+                    return new DropdownMenuItem<String>(
                       value: value,
-                      child: Text(value),
+                      child: new Text(value),
                     );
                   }).toList(),
                 ),
@@ -284,6 +265,12 @@ class _MyHomePageState extends State<MyHomePage> {
               child: Text('mute'),
               onPressed: () {
                 _stop();
+              },
+            ),
+            RaisedButton(
+              child: Text('change Program Names'),
+              onPressed: () {
+                _changeProgramNames();
               },
             ),
           ],
@@ -593,5 +580,105 @@ class _MyHomePageState extends State<MyHomePage> {
         );
       },
     );
+  }
+
+  void _changeProgramNames() {
+    List<String> tempNames = progNames;
+
+    int index = progNames.indexOf(ddValue);
+
+    showDialog(
+        context: context,
+        barrierDismissible:
+            false, // dialog is dismissible with a tap on the barrier
+        builder: (BuildContext context) {
+          return AlertDialog(
+            //  contentPadding: const EdgeInsets.all(16.0),
+            title: Text('Enter new program names'),
+            content: SingleChildScrollView(
+              scrollDirection: Axis.vertical,
+              child: new Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  TextField(
+                    textAlign: TextAlign.start,
+                    expands: false,
+                    autofocus: true,
+                    decoration: new InputDecoration(
+                        labelText: progNames[0], hintText: 'eg. Program no. 1'),
+                    onChanged: (value) {
+                      tempNames[0] = value;
+                    },
+                  ),
+                  TextField(
+                    textAlign: TextAlign.start,
+                    expands: false,
+                    autofocus: true,
+                    decoration: new InputDecoration(
+                        labelText: progNames[1], hintText: 'eg. Program no. 2'),
+                    onChanged: (value) {
+                      tempNames[1] = value;
+                    },
+                  ),
+                  TextField(
+                    textAlign: TextAlign.start,
+                    expands: false,
+                    autofocus: true,
+                    decoration: new InputDecoration(
+                        labelText: progNames[2], hintText: 'eg. Program no. 3'),
+                    onChanged: (value) {
+                      tempNames[2] = value;
+                    },
+                  ),
+                  TextField(
+                    textAlign: TextAlign.start,
+                    expands: false,
+                    autofocus: true,
+                    decoration: new InputDecoration(
+                        labelText: progNames[3], hintText: 'eg. Program no. 4'),
+                    onChanged: (value) {
+                      tempNames[3] = value;
+                    },
+                  ),
+                  TextField(
+                    textAlign: TextAlign.start,
+                    expands: false,
+                    autofocus: true,
+                    decoration: new InputDecoration(
+                        labelText: progNames[4], hintText: 'eg. Program no. 5'),
+                    onChanged: (value) {
+                      tempNames[4] = value;
+                    },
+                  ),
+                ],
+              ),
+            ),
+            actions: <Widget>[
+              FlatButton(
+                child: Text('Save'),
+                onPressed: () {
+                  //  for (var i = 0; i < 5; i = i + 1) {
+                  //     print(progNames[i]);
+                  //    }
+                  setState(() {
+                    try {
+                      ddValue = tempNames[index];
+                      progNames = tempNames;
+                    } catch (e) {
+                      print("error =>" + e.toString());
+                    }
+                  });
+                  Navigator.of(context).pop();
+                },
+              ),
+              FlatButton(
+                child: Text('Cancel'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        });
   }
 }
