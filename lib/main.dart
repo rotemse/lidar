@@ -13,7 +13,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Flutter App',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -139,7 +139,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     Container(
                       padding: EdgeInsets.all(10),
                       child: Text(
-                        "Rear",
+                        "Front",
                         style: TextStyle(fontSize: 18),
                       ),
                     ),
@@ -165,7 +165,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     Container(
                       padding: EdgeInsets.all(10),
                       child: Text(
-                        "Front",
+                        "Rear",
                         style: TextStyle(fontSize: 18),
                       ),
                     ),
@@ -202,7 +202,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     color: Colors.deepPurpleAccent,
                   ),
                   onChanged: (String newValue) {
-                    ddValue = newValue;
+                  //  ddValue = newValue;
                     _showDialogMode(false, ModeOfOperation.one, newValue);
                     //   setState(() {
                     //     dropdownValue = newValue;
@@ -366,7 +366,8 @@ class _MyHomePageState extends State<MyHomePage> {
             blackOutputState[count] = int.parse(lastreceived1[i + 4]);
             count++;
           }
-          int prog = int.parse((dropdownValue.split(" "))[1]);
+         // int prog = int.parse((dropdownValue.split(" "))[1]);
+         int prog = (progNames.indexOf(ddValue))+1;
           if (blackOutputState[prog - 1] == 1)
           //al is ok. prog number equals program selected
           {
@@ -437,7 +438,8 @@ class _MyHomePageState extends State<MyHomePage> {
           //  print("list:");
           //   for (var i = 0; i < 10; i++) {
           //  print("$i : ${whiteOutputState[i].toString()}");}
-          int prog = int.parse((dropdownValue.split(" "))[1]);
+         // int prog = int.parse((dropdownValue.split(" "))[1]);
+          int prog = (progNames.indexOf(ddValue))+1;
           prog *= 2;
           currentMode == ModeOfOperation.one ? prog -= 1 : prog -= 0;
           //  print(prog);
@@ -563,8 +565,9 @@ class _MyHomePageState extends State<MyHomePage> {
                   });
                 } else {
                   setState(() {
-                    dropdownValue = dropDown;
-                    print("the new Drop Down value is $dropdownValue");
+                  //  dropdownValue = dropDown;
+                    ddValue = dropDown;
+                    print("the new Drop Down value is $ddValue");
                   });
                 }
               },
