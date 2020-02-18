@@ -34,6 +34,7 @@ class MyHomePage extends StatefulWidget {
 enum ModeOfOperation { one, two }
 AudioPlayer audioPlayer = AudioPlayer();
 AudioCache audioCache = new AudioCache();
+AudioPlayer advancedPlayer;
 
 class _MyHomePageState extends State<MyHomePage> {
   final ProgStorage storage = new ProgStorage();
@@ -65,42 +66,55 @@ class _MyHomePageState extends State<MyHomePage> {
   static Socket socket2;
   static num watchdog1 = 0;
   static num watchdog2 = 0;
+  static num eternalWD1 = 0;
+  static num eternalWD2 = 0;
   String data1 = " ";
   String data2 = " ";
   String ddValue = "Option 1";
   static bool connected1 = false;
   static bool connected2 = false;
-  Color conColor = Colors.white;
+  static bool alarm1 = false;
+  static bool alarm2 = false;
+  Color conColor1 = Colors.white;
+  Color conColor2 = Colors.white;
   Color disColor = Colors.white;
   //String picBlackOk='assets/images/Black_OK.PNG';
   static int count = 1;
   static const oneSec = const Duration(seconds: 1);
   static const twoSec = const Duration(seconds: 2);
+  static const tenSec = const Duration(seconds: 10);
   static const halfSec = const Duration(milliseconds: 500);
   //Timer timerProg;
   Timer timerProg;
+  Timer timerProg1;
   Timer timerProg2;
   static bool disTrig1 = false;
   static bool disTrig2 = false;
-  Timer watchDogErrorTimer = Timer.periodic(twoSec, (watchDogErrorTimer) {
-    watchDogTester();
-  });
+  static bool reconnect1 = false;
+  static bool reconnect2 = false;
+  Timer watchDogErrorTimer;
 
-  bool _isPlaying = false;
+  // bool _isPlaying = false;
 
   @override
   void initState() {
     super.initState();
     //progNames = storage.readNames();
+    advancedPlayer = new AudioPlayer();
+    audioCache = new AudioCache(fixedPlayer: advancedPlayer);
     storage.readNames().then((List<String> names) {
       setState(() {
         for (var i = 0; i < names.length; i = i + 1) {
           print(names[i]);
         }
         ddValue = names[0];
-       progNames = names;
+        progNames = names;
       });
     });
+    watchDogErrorTimer = Timer.periodic(twoSec, (watchDogErrorTimer) {
+      watchDogTester();
+    });
+    connect();
   }
 
   @override
@@ -112,19 +126,19 @@ class _MyHomePageState extends State<MyHomePage> {
             const Text("Sick App"),
         actions: <Widget>[
           FlatButton(
-            textColor: conColor,
+            textColor: conColor1,
             onPressed: () {
               connect();
             },
-            child: const Text("Connect"),
+            child: const Text("Connected1"),
             shape: CircleBorder(side: BorderSide(color: Colors.transparent)),
           ),
           FlatButton(
-            textColor: disColor,
+            textColor: conColor2,
             onPressed: () {
               disconnect();
             },
-            child: const Text("Disconnect"),
+            child: const Text("Connected2"),
             shape: CircleBorder(side: BorderSide(color: Colors.transparent)),
           ),
         ],
@@ -146,7 +160,8 @@ class _MyHomePageState extends State<MyHomePage> {
                     Material(
                       child: InkWell(
                         onTap: () {
-                          _stop();
+                          // _stop();
+                          advancedPlayer.stop();
                         },
                         child: Container(
                           height: 200,
@@ -172,7 +187,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     Material(
                       child: InkWell(
                         onTap: () {
-                          _stop();
+                          advancedPlayer.stop();
                         },
                         child: Container(
                           height: 200,
@@ -202,7 +217,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     color: Colors.deepPurpleAccent,
                   ),
                   onChanged: (String newValue) {
-                  //  ddValue = newValue;
+                    //  ddValue = newValue;
                     _showDialogMode(false, ModeOfOperation.one, newValue);
                     //   setState(() {
                     //     dropdownValue = newValue;
@@ -264,7 +279,8 @@ class _MyHomePageState extends State<MyHomePage> {
             RaisedButton(
               child: Text('mute'),
               onPressed: () {
-                _stop();
+                // _stop();
+                advancedPlayer.stop();
               },
             ),
             RaisedButton(
@@ -279,44 +295,79 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  _play(String trackName) async {
-    //audioPlayer.
-    audioPlayer = await audioCache.play(trackName);
-    //  setState(() {
+  void connectSensor1() {
+    Socket.connect("192.168.0.10", 2112, timeout: tenSec).then((Socket sock1) {
+      socket1 = sock1;
+      socket1.listen(dataHandler1,
+          onError: errorHandler1, onDone: doneHandler1, cancelOnError: true);
+    }).whenComplete(() {
+      print("copmleted trying to connect to sensor1.");
+      if (socket1 == null) {
+        print("socket1 is null");
+        reconnect1 = true;
+        watchdog1 = 0;
+        //  if (timerProg1 != null) timerProg1.cancel();
+      } else
+        print("socket1 is connected");
+      if (timerProg1 != null) timerProg1.cancel();
+      timerProg1 = Timer.periodic(oneSec, (timerProg1) {
+        sendData1();
+      });
+    }).timeout(Duration(seconds: 10), onTimeout: () {
+      // method to handle a timeout exception and tell to view layer that
+      // network operation fails
+      // if we do not implement onTimeout callback the framework will throw a  TimeoutException
 
-    //   });
+      print(
+          "Can't connect to Sensor 1, either WIFI is off or the sensor is off, or they are not on the network");
+      //  reconnect1 = true;
+      //  watchdog1 = 0;
+      //  if (timerProg1 != null) timerProg1.cancel();
+    });
   }
 
-  void _stop() {
-    //print("stopping");
-    audioPlayer?.stop();
-    //audioPlayer?.stop();
-    _isPlaying = false;
+  void connectSensor2() {
+    Socket.connect("192.168.0.11", 2112, timeout: tenSec).then((Socket sock2) {
+      socket2 = sock2;
+      socket2.listen(dataHandler2,
+          onError: errorHandler2, onDone: doneHandler2, cancelOnError: true);
+    }).whenComplete(() {
+      print("copmleted trying to connect to sensor2.");
+      if (socket2 == null) {
+        print("socket2 is null");
+        reconnect2 = true;
+        watchdog2 = 0;
+        // if (timerProg2 != null) timerProg2.cancel();
+      } else
+        print("socket2 is connected");
+      if (timerProg2 != null) timerProg2.cancel();
+      timerProg2 = Timer.periodic(oneSec, (timerProg2) {
+        sendData2();
+      });
+    }).timeout(Duration(seconds: 10), onTimeout: () {
+      // method to handle a timeout exception and tell to view layer that
+      // network operation fails
+      // if we do not implement onTimeout callback the framework will throw a  TimeoutException
+
+      print(
+          "Can't connect to Sensor 2, either WIFI is off or the sensor is off, or they are not on the network");
+      // reconnect2 = true;
+      // if (timerProg2 != null) timerProg2.cancel();
+      // watchdog2 = 0;
+    });
   }
 
   // Socket connection
   void connect() {
     // Socket.startConnect(host, port)
-    Socket.connect("192.168.0.10", 2111, timeout: twoSec).then((Socket sock1) {
-      socket1 = sock1;
-      socket1.listen(dataHandler1,
-          onError: errorHandler1, onDone: doneHandler1, cancelOnError: false);
-    });
-
-    Socket.connect("192.168.0.11", 2111, timeout: twoSec).then((Socket sock2) {
-      socket2 = sock2;
-      socket2.listen(dataHandler2,
-          onError: errorHandler2, onDone: doneHandler2, cancelOnError: false);
-    });
-
+    connectSensor1();
+    connectSensor2();
     // if ((socket1 != null) && (socket2 != null)) {
-    print("connecting");
+    // print("connecting");
     timerProg = Timer.periodic(oneSec, (timerProg) {
       //sendDataTime();
     });
-    timerProg2 = Timer.periodic(oneSec, (timerProg2) {
-      sendData();
-    });
+
     //  }
     //else {
     //   setState(() {
@@ -325,12 +376,39 @@ class _MyHomePageState extends State<MyHomePage> {
     // }
   }
 
+  static void sendData1() {
+    try {
+      String message = String.fromCharCode(2) +
+          "sRN LIDoutputstate" +
+          String.fromCharCode(3);
+      if (socket1 != null) socket1.write(message);
+      watchdog1 += 1;
+      eternalWD1 += 1;
+    } catch (e) {
+      print("error sensor1 timer =>" + e.toString());
+    }
+  }
+
+  static void sendData2() {
+    try {
+      String message = String.fromCharCode(2) +
+          "sRN LIDoutputstate" +
+          String.fromCharCode(3);
+      if (socket2 != null) socket2.write(message);
+      watchdog2 += 1;
+      eternalWD2 += 1;
+    } catch (e) {
+      print("error sensor2 timer =>" + e.toString());
+    }
+  }
+
   void disconnect() {
     // socket1.destroy();
     // socket2.destroy();
     connected1 = false;
     connected2 = false;
     timerProg.cancel();
+    timerProg1.cancel();
     timerProg2.cancel();
     // timerProg = null;
     // timerProg2 = null;
@@ -340,7 +418,8 @@ class _MyHomePageState extends State<MyHomePage> {
     socket2.close();
     //  socket1 = null;
     //  socket2 = null;
-    conColor = Colors.white;
+    conColor1 = Colors.white;
+    conColor2 = Colors.white;
     _imageWhite = _imageWhiteDisconnect;
     _imageBlack = _imageBlackDisconnect;
   }
@@ -355,36 +434,41 @@ class _MyHomePageState extends State<MyHomePage> {
           //print(data1);
         } else if (data1.contains("LIDoutputstate")) {
           watchdog1 = 1;
+          eternalWD1 = 1;
           connected1 = true;
           disTrig1 = false;
-          conColor = Colors.green;
+          conColor1 = Colors.green;
           //    print("new OUTPUT1 received");
-          print("Data1: $data1");
+          print("Time1: ${DateTime.now()} Data1: $data1");
           List<String> lastreceived1 = data1.split(" ");
           int count = 0;
           for (var i = 0; i < 20; i = i + 2) {
             blackOutputState[count] = int.parse(lastreceived1[i + 4]);
             count++;
           }
-         // int prog = int.parse((dropdownValue.split(" "))[1]);
-         int prog = (progNames.indexOf(ddValue))+1;
+          // int prog = int.parse((dropdownValue.split(" "))[1]);
+          int prog = (progNames.indexOf(ddValue)) + 1;
           if (blackOutputState[prog - 1] == 1)
           //al is ok. prog number equals program selected
           {
+            alarm1 = false;
             //  print("OK1");
             if (_imageBlack != _imageBlackOk) {
               changePicBlack(_imageBlackOk);
-              _stop();
+              // _stop();
+              if (!alarm1 && !alarm2) advancedPlayer.stop();
             }
           } else {
             print("ALARM1");
+            alarm1 = true;
             //trigger alarm and change image!
             if (_imageBlack != _imageBlackAlarm) {
               changePicBlack(_imageBlackAlarm);
-              if (!_isPlaying) {
-                _isPlaying = true;
-                _play('sounds/alarm2.mp3');
-              }
+              //  if (!_isPlaying) {
+              //     _isPlaying = true;
+              // _play('sounds/alarm2.mp3');
+              audioCache.loop('sounds/alarm2.mp3'); 
+              //    }
             }
           }
         }
@@ -395,9 +479,11 @@ class _MyHomePageState extends State<MyHomePage> {
   void errorHandler1(error, StackTrace trace) {
     setState(() {
       data1 = "Error communiacting Sensor1";
-      print("error1");
+      connected1 = false;
+      print("error connecting to sensor 1");
       print(error);
-      conColor = Colors.white;
+      conColor1 = Colors.white;
+      //  timerProg1.cancel();
     });
   }
 
@@ -408,7 +494,8 @@ class _MyHomePageState extends State<MyHomePage> {
       connected1 = false;
       print("done handler1");
       socket1.destroy();
-      conColor = Colors.white;
+      conColor1 = Colors.white;
+      timerProg1.cancel();
     });
   }
 
@@ -422,11 +509,13 @@ class _MyHomePageState extends State<MyHomePage> {
           //  print(data2);
         } else if (data2.contains("LIDoutputstate")) {
           watchdog2 = 1;
+          eternalWD2 = 1;
           connected2 = true;
           disTrig2 = false;
-          conColor = Colors.green;
+          conColor2 = Colors.green;
           // print("new OUTPUT2 received");
-          print("Data2: $data2");
+
+          print("Time2: ${DateTime.now()} Data2: $data2");
           List<String> lastreceived2 = data2.split(" ");
           //  for (var i =0; i<lastreceived2.length; i++ ) {print(lastreceived2[i]);}
           int count = 0;
@@ -438,8 +527,8 @@ class _MyHomePageState extends State<MyHomePage> {
           //  print("list:");
           //   for (var i = 0; i < 10; i++) {
           //  print("$i : ${whiteOutputState[i].toString()}");}
-         // int prog = int.parse((dropdownValue.split(" "))[1]);
-          int prog = (progNames.indexOf(ddValue))+1;
+          // int prog = int.parse((dropdownValue.split(" "))[1]);
+          int prog = (progNames.indexOf(ddValue)) + 1;
           prog *= 2;
           currentMode == ModeOfOperation.one ? prog -= 1 : prog -= 0;
           //  print(prog);
@@ -448,17 +537,21 @@ class _MyHomePageState extends State<MyHomePage> {
           {
             //  print("OK2");
             if (_imageWhite != _imageWhiteOk) {
-              _stop();
+              //  _stop();
+              alarm2 = false;
+              if (!alarm1 && !alarm2) advancedPlayer.stop();
               changePicWhite(_imageWhiteOk);
             }
           } else {
             print("ALARM2");
+            alarm2 = true;
             //trigger alarm and change image!
             if (_imageWhite != _imageWhiteAlarm) {
-              if (!_isPlaying) {
-                _isPlaying = true;
-                _play('sounds/alarm2.mp3');
-              }
+              //   if (!_isPlaying) {
+              //    _isPlaying = true;
+              // _play('sounds/alarm2.mp3');
+              audioCache.loop('sounds/alarm2.mp3');
+              //   }
               changePicWhite(_imageWhiteAlarm);
             }
           }
@@ -469,10 +562,12 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void errorHandler2(error, StackTrace trace) {
     setState(() {
+      connected2 = false;
       data2 = "Error communiacting Sensor2";
       print(error);
-      print("error2");
-      conColor = Colors.white;
+      print("error connecting to sensor 2");
+      conColor2 = Colors.white;
+      //  timerProg2.cancel();
     });
   }
 
@@ -483,22 +578,9 @@ class _MyHomePageState extends State<MyHomePage> {
       connected2 = false;
       socket2.destroy();
       print("done handler2");
-      conColor = Colors.white;
+      conColor2 = Colors.white;
+      timerProg2.cancel();
     });
-  }
-
-  static void sendData() {
-    try {
-      String message = String.fromCharCode(2) +
-          "sRN LIDoutputstate" +
-          String.fromCharCode(3);
-      if (socket1 != null) socket1.write(message);
-      watchdog1 += 1;
-      if (socket2 != null) socket2.write(message);
-      watchdog2 += 1;
-    } catch (e) {
-      print("error =>" + e.toString());
-    }
   }
 
   void sendDataTime() {
@@ -508,24 +590,53 @@ class _MyHomePageState extends State<MyHomePage> {
     socket2.write(message);
   }
 
-  static void watchDogTester() {
+  void watchDogTester() {
     if (watchdog1 > 2) {
       print("LIDAR1 disconnected! time off = $watchdog1");
       connected1 = false;
-      _imageBlack = _imageBlackDisconnect;
+      conColor1 = Colors.white;
+      // _imageBlack = _imageBlackDisconnect;
+
+      if (_imageBlack != _imageBlackDisconnect) {
+        changePicBlack(_imageBlackDisconnect);
+      }
+
       if (!disTrig1) {
-        audioCache.play('sounds/siren.mp3');
+        audioCache.loop('sounds/starWars.mp3');
         disTrig1 = true;
       }
+      if ((watchdog1 > 20)) {
+        watchdog1 = 0;
+        print("trying reconnecting to Sensor1...");
+        reconnect1 = false;
+        connectSensor1();
+      }
+    }
+
+    if (eternalWD1 > 2) {
+      print("LIDAR1 eternalWD = $eternalWD1");
     }
     if (watchdog2 > 2) {
       print("LIDAR2 disconnected! time off = $watchdog2");
       connected2 = false;
-      _imageWhite = _imageWhiteDisconnect;
+      conColor2 = Colors.white;
+      if (_imageWhite != _imageWhiteDisconnect) {
+        changePicWhite(_imageWhiteDisconnect);
+      }
       if (!disTrig2) {
-        audioCache.play('sounds/siren.mp3');
+        audioCache.loop('sounds/starWars.mp3');
         disTrig2 = true;
       }
+      if ((watchdog2 > 20)) {
+        watchdog2 = 0;
+        print("trying reconnecting to Sensor2...");
+        reconnect2 = false;
+        connectSensor2();
+      }
+    }
+
+    if (eternalWD2 > 2) {
+      print("LIDAR2 eternalWD = $eternalWD2");
     }
   }
 
@@ -565,9 +676,11 @@ class _MyHomePageState extends State<MyHomePage> {
                   });
                 } else {
                   setState(() {
-                  //  dropdownValue = dropDown;
+                    //  dropdownValue = dropDown;
                     ddValue = dropDown;
                     print("the new Drop Down value is $ddValue");
+                    //now reset the full area
+                    currentMode = ModeOfOperation.one;
                   });
                 }
               },
