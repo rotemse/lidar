@@ -2,9 +2,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audio_cache.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/services.dart';
 import 'dart:io';
 import 'dart:async';
 import './files.dart';
+import 'package:screen/screen.dart';
+import 'package:hardware_buttons/hardware_buttons.dart' as HardwareButtons;
 
 void main() => runApp(MyApp());
 
@@ -37,6 +40,9 @@ AudioCache audioCache = new AudioCache();
 AudioPlayer advancedPlayer;
 
 class _MyHomePageState extends State<MyHomePage> {
+  StreamSubscription<HardwareButtons.LockButtonEvent> _lockButtonSubscription;
+  static bool locked = false;
+  static bool lockDetected = false;
   final ProgStorage storage = new ProgStorage();
   static AssetImage _imageBlackOk = AssetImage('assets/images/Black_OK.PNG');
   static AssetImage _imageBlackAlarm =
@@ -62,6 +68,7 @@ class _MyHomePageState extends State<MyHomePage> {
     "Option 5"
   ];
   List<TextEditingController> progControllers = new List(5);
+  bool isKeptOn;
   static Socket socket1;
   static Socket socket2;
   static num watchdog1 = 0;
@@ -94,11 +101,22 @@ class _MyHomePageState extends State<MyHomePage> {
   static bool reconnect2 = false;
   Timer watchDogErrorTimer;
 
+  bool oneisDouble;
+  DateTime dtOne = DateTime.now();
+  bool twoisDouble;
+  DateTime dtTwo;
+
   // bool _isPlaying = false;
 
   @override
   void initState() {
     super.initState();
+     Screen.setBrightness(1);
+    locked = false;
+    dtTwo = dtOne.add(tenSec);
+    _lockButtonSubscription =
+        HardwareButtons.lockButtonEvents.listen(_lockWasDetected);
+    SystemChrome.setEnabledSystemUIOverlays([]);
     //progNames = storage.readNames();
     advancedPlayer = new AudioPlayer();
     audioCache = new AudioCache(fixedPlayer: advancedPlayer);
@@ -128,7 +146,7 @@ class _MyHomePageState extends State<MyHomePage> {
           FlatButton(
             textColor: conColor1,
             onPressed: () {
-              connect();
+           //   connect();
             },
             child: const Text("Connected1"),
             shape: CircleBorder(side: BorderSide(color: Colors.transparent)),
@@ -136,7 +154,7 @@ class _MyHomePageState extends State<MyHomePage> {
           FlatButton(
             textColor: conColor2,
             onPressed: () {
-              disconnect();
+             // disconnect();
             },
             child: const Text("Connected2"),
             shape: CircleBorder(side: BorderSide(color: Colors.transparent)),
@@ -161,8 +179,11 @@ class _MyHomePageState extends State<MyHomePage> {
                       child: InkWell(
                         onTap: () {
                           // _stop();
-                          advancedPlayer.stop();
+                       //   advancedPlayer.stop();
                         },
+                        onDoubleTap: (() {
+                          _handleDoubleTap(1, DateTime.now());
+                        }),
                         child: Container(
                           height: 200,
                           width: 200,
@@ -187,8 +208,11 @@ class _MyHomePageState extends State<MyHomePage> {
                     Material(
                       child: InkWell(
                         onTap: () {
-                          advancedPlayer.stop();
+                         // advancedPlayer.stop();
                         },
+                        onDoubleTap: (() {
+                          _handleDoubleTap(2, DateTime.now());
+                        }),
                         child: Container(
                           height: 200,
                           width: 200,
@@ -218,6 +242,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                   onChanged: (String newValue) {
                     //  ddValue = newValue;
+                    if (!locked)
                     _showDialogMode(false, ModeOfOperation.one, newValue);
                     //   setState(() {
                     //     dropdownValue = newValue;
@@ -246,6 +271,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       value: ModeOfOperation.one,
                       groupValue: currentMode,
                       onChanged: (ModeOfOperation value) {
+                         if (!locked)
                         _showDialogMode(true, value, "");
                         //   setState(() {
                         //     currentMode = value;
@@ -262,6 +288,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       value: ModeOfOperation.two,
                       groupValue: currentMode,
                       onChanged: (ModeOfOperation value) {
+                         if (!locked)
                         _showDialogMode(true, value, "");
                         //     setState(() {
                         //       currentMode = value;
@@ -280,12 +307,14 @@ class _MyHomePageState extends State<MyHomePage> {
               child: Text('mute'),
               onPressed: () {
                 // _stop();
+                if (!locked)
                 advancedPlayer.stop();
               },
             ),
             RaisedButton(
               child: Text('change Program Names'),
               onPressed: () {
+                 if (!locked)
                 _changeProgramNames();
               },
             ),
@@ -467,7 +496,7 @@ class _MyHomePageState extends State<MyHomePage> {
               //  if (!_isPlaying) {
               //     _isPlaying = true;
               // _play('sounds/alarm2.mp3');
-              audioCache.loop('sounds/alarm2.mp3'); 
+              audioCache.loop('sounds/alarm.mp3');
               //    }
             }
           }
@@ -550,7 +579,7 @@ class _MyHomePageState extends State<MyHomePage> {
               //   if (!_isPlaying) {
               //    _isPlaying = true;
               // _play('sounds/alarm2.mp3');
-              audioCache.loop('sounds/alarm2.mp3');
+              audioCache.loop('sounds/alarm.mp3');
               //   }
               changePicWhite(_imageWhiteAlarm);
             }
@@ -602,7 +631,7 @@ class _MyHomePageState extends State<MyHomePage> {
       }
 
       if (!disTrig1) {
-        audioCache.loop('sounds/starWars.mp3');
+        audioCache.loop('sounds/siren.mp3');
         disTrig1 = true;
       }
       if ((watchdog1 > 20)) {
@@ -624,7 +653,7 @@ class _MyHomePageState extends State<MyHomePage> {
         changePicWhite(_imageWhiteDisconnect);
       }
       if (!disTrig2) {
-        audioCache.loop('sounds/starWars.mp3');
+        audioCache.loop('sounds/siren.mp3');
         disTrig2 = true;
       }
       if ((watchdog2 > 20)) {
@@ -797,5 +826,33 @@ class _MyHomePageState extends State<MyHomePage> {
             ],
           );
         });
+  }
+
+
+  void _lockWasDetected(HardwareButtons.LockButtonEvent ev) {
+    lockDetected = !lockDetected;
+    //  if (lockDetected)
+    {
+      audioCache.loop('sounds/sleepMode.mp3');
+    }
+  }
+
+  void _handleDoubleTap(int id, DateTime dt) {
+    // id==1? oneisDouble = true: oneisDouble= false;
+    //  id==2? twoisDouble = true: twoisDouble= false;
+    if (id == 1) {
+      dtOne = DateTime.now();
+    }
+    if (id == 2) {
+      dtTwo = DateTime.now();
+    }
+
+    Duration difference = dtOne.difference(dtTwo);
+    difference = difference.abs();
+    print(difference);
+    if (difference.compareTo(halfSec) < 0) {
+      locked ? Screen.setBrightness(1) : Screen.setBrightness(0.2);
+      locked = !locked;
+    }
   }
 }
